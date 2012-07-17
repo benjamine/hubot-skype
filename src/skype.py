@@ -3,6 +3,7 @@ import Skype4Py
 import sys
 import json
 import platform
+import time
 
 def Send(msg):
     sys.stdout.write(json.dumps(msg) + '\n')
@@ -67,7 +68,11 @@ while True:
         chat.SendMessage(msg['message'])
     except KeyboardInterrupt:
         raise
-    except:
+    except Exception as err:
+        Send({
+            'type':'log',
+            'message':'ERROR SENDING MESSAGE: '+str(err)
+            })
         continue
 
     time.sleep(1)

@@ -24,7 +24,12 @@ class SkypeAdapter extends Adapter
     @skype = child_process.spawn(pythonPath, [__dirname + '/skype.py'])
 
     @skype.stdout.on 'data', (data) =>
-        msg = JSON.parse(data.toString())
+        try
+            msg = JSON.parse(data.toString())
+        catch err
+            console.log('Error parsing skype connector response: '+err)
+            console.log('DATA: '+data)
+
         console.log('FROM SKYPE:', msg)
 
         if !msg.user
@@ -42,16 +47,18 @@ class SkypeAdapter extends Adapter
         adapter.receive new TextMessage user, msg.message
 
     @skype.stderr.on 'data', (data) =>
-        console.error 'ERROR: ', data
+        console.error 'ERROR ON SKYPE CONNECTOR: ', data.toString()
 
     @skype.on 'exit', (code) =>
         console.log('skype connector process exited with code ' + code)
 
     @skype.on "uncaughtException", (err) =>
-      @robot.logger.error "#{err}"
+        console.error 'ERROR ON SKYPE CONNECTOR: ', err.toString()
+        @robot.logger.error err.toString()
 
     process.on "uncaughtException", (err) =>
-      @robot.logger.error "#{err}"
+        console.error 'ERROR ON SKYPE CONNECTOR: ', err.toString()
+        @robot.logger.error err.toString()
 
     @emit "connected"
 
