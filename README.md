@@ -27,8 +27,8 @@ Type "help", "copyright", "credits" or "license" for more information.
 ```
 {
   "dependencies" : {
-    "hubot": ">=2.3.0"
-    "hubot-skype": "https://github.com/benjamine/hubot-skype.git"
+    "hubot": ">=2.3.0",
+    "hubot-skype": "git://github.com/benjamine/hubot-skype.git"
   },
 }
 ```
