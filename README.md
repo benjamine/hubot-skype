@@ -10,7 +10,15 @@ Installing
 -----------
 
 - Install Pyhon 2.7+ *IMPORTANT*: Skype4Py only works on python for 32bit, otherwise it will hang up on attaching to Skype.
-- Install Skype4Py (check http://sourceforge.net/projects/skype4py/, eg: download source and on project root folder run: '''python setup.py install''')
+- Install Skype4Py 
+
+You can get latest version from [http://sourceforge.net/projects/skype4py] thought to simplify installation I included a copy from [this fork](https://github.com/stigkj/Skype4Py) you can install it by running (be sure you are using python 32bit version):
+
+
+```
+npm run-script skype4py-install
+```
+
 - you can test Skype4Py is installed correctly this way:
 
 ```
@@ -35,3 +43,5 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 - ```npm install```
 - now you can ```hubot -a skype```
+
+You can override the path to the python executable with environment variable: HUBOT_SKYPE_PYTHONPATH

@@ -1,0 +1,1 @@
+Fork of the Skype4Py v1.0.32.0 Python library with a simple patch for doing thread handling correctly on Python v2.6 and up on OS X
