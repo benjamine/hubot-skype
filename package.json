@@ -1,6 +1,6 @@
 {
   "name": "hubot-skype",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Benjamin Eidelman <beneidel@gmail.com>",
   "description": "Skype adapter for hubot",
   "contributors": [ 

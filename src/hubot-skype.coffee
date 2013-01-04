@@ -23,12 +23,15 @@ class SkypeAdapter extends Adapter
 
     @skype = child_process.spawn(pythonPath, [__dirname + '/skype.py'])
 
-    @skype.stdout.on 'data', (data) =>
+    processData = (jsonMsg) ->
+        if not jsonMsg
+            return
         try
-            msg = JSON.parse(data.toString())
+            msg = JSON.parse(jsonMsg)
         catch err
             console.log('Error parsing skype connector response: '+err)
-            console.log('DATA: '+data)
+            console.log('DATA: '+jsonMsg)
+            return
 
         console.log('FROM SKYPE:', msg)
 
@@ -45,6 +48,11 @@ class SkypeAdapter extends Adapter
         if !msg.message
             return
         adapter.receive new TextMessage user, msg.message
+
+    @skype.stdout.on 'data', (data) =>
+        messages = data.toString().split('\n');
+        messages.forEach (msg) ->
+            processData msg.trim()
 
     @skype.stderr.on 'data', (data) =>
         console.error 'ERROR ON SKYPE CONNECTOR: ', data.toString()
