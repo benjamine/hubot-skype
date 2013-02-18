@@ -18,9 +18,25 @@ audioFolder = 'audio'
 if os.environ.has_key('HUBOT_SKYPE_AUDIO_FOLDER'):
     audioFolder = os.environ['HUBOT_SKYPE_AUDIO_FOLDER']
 
+callMetadata = {}
+
 def Send(msg):
     sys.stdout.write(json.dumps(msg) + '\n')
     sys.stdout.flush()
+
+def GetCallMetadata(call):
+    global onCallStartHandlers
+    callUsers = Set([p.Handle for p in call.Participants])
+    callUsers.add(call.PartnerHandle)
+    callKey = ','.join(callUsers)
+    metadata = {}
+    if not callMetadata.has_key(callKey):
+        LogMessage('creating metadata for call: ' + callKey)
+        callMetadata[callKey] = metadata
+    else:
+        LogMessage('found metadata for call: ' + callKey)
+        metadata = callMetadata[callKey]
+    return metadata
 
 def OnMessageStatus(message, status):
 
@@ -110,32 +126,31 @@ def OnCallStatus(call, status):
     if status == Skype4Py.clsInProgress:
         call.MarkAsSeen()
         LogMessage('Call started')
-        if hasattr(call, 'OnCallInProgress'):
-            LogMessage('Call has inprogress events')
-            if call.OnCallInProgress.has_key('play'):
-                if call.OnCallInProgress.has_key('recordAndNotify'):
-                    call.OnAudioPlayed = 'record'
-                    call.NotifyRecordingTo = call.OnCallInProgress['recordAndNotify']
-                else:
-                    call.OnAudioPlayed = 'hangup'
-                PlayAudio(call, call.OnCallInProgress['play'])
-            elif call.OnCallInProgress.has_key('speak'):
-                if call.OnCallInProgress.has_key('recordAndNotify'):
-                    call.OnAudioPlayed = 'record'
-                    call.NotifyRecordingTo = call.OnCallInProgress['recordAndNotify']
-                else:
-                    call.OnAudioPlayed = 'hangup'
-                Speak(call, call.OnCallInProgress['speak'])
-            del call.OnCallInProgress
+        metadata = GetCallMetadata(call)
+        if metadata.has_key('playonstart'):
+            if metadata.has_key('afterStartRecordAndNotify'):
+                metadata['afterAudioPlayed'] = 'record'
+            else:
+                metadata['afterAudioPlayed'] = 'hangup'
+            PlayAudio(call, metadata['playonstart'])
+            del metadata['playonstart']
+        elif metadata.has_key('speakonstart'):
+            if metadata.has_key('afterStartRecordAndNotify'):
+                metadata['afterAudioPlayed'] = 'record'
+            else:
+                metadata['afterAudioPlayed'] = 'hangup'
+            Speak(call, metadata['speakonstart'])
+            del metadata['speakonstart']
 
 def OnCallInputStatusChanged(call, active):
     # shut up if the call ends
     if call.InputDevice(Skype4Py.callIoDeviceTypeFile) == None or not active:
-        if hasattr(call, 'OnAudioPlayed'):
-            if call.OnAudioPlayed == 'hangup':
+        metadata = GetCallMetadata(call)
+        if metadata.has_key('afterAudioPlayed'):
+            if metadata['afterAudioPlayed'] == 'hangup':
                 LogMessage('audio played, now hanging up')
                 call.Finish()
-            if call.OnAudioPlayed == 'record':
+            if metadata['afterAudioPlayed'] == 'record':
                 if not hasattr(call, 'recording'):
                     LogMessage('audio played, now recording answer')
                     RecordAudio(call)
@@ -170,8 +185,9 @@ def RecordAudio(call, maxSeconds = 900):
         LogMessage('Recording to: ' + filename)
         call.OutputDevice(Skype4Py.callIoDeviceTypeFile, filename)
 
-        if hasattr(call, 'NotifyRecordingTo'):
-            user, room = call.NotifyRecordingTo.split(',')
+        metadata = GetCallMetadata(call)
+        if metadata.has_key('afterStartRecordAndNotify'):
+            user, room = metadata['afterStartRecordAndNotify'].split(',')
             Send({
                 'user': user,
                 'message': '[call-recording:' + filename + ']',
@@ -218,23 +234,23 @@ def CallAndPlay(handle, filename, recordAndNotify = False):
     if call.Status == Skype4Py.clsInProgress:
         PlayAudio(call, filename)
     else:
-        if not hasattr(call, 'OnCallInProgress'):
-            call.OnCallInProgress = {}
-        call.OnCallInProgress['play'] = filename
+        metadata = GetCallMetadata(call)
+        metadata['playonstart'] = filename
         if (not recordAndNotify is False):
-            call.OnCallInProgress['recordAndNotify'] = recordAndNotify
+            metadata['afterStartRecordAndNotify'] = recordAndNotify
     return call
 
 def CallAndSpeak(handle, text, recordAndNotify = False):
+    LogMessage('getting call with ' + handle)
     call = GetCallWith(handle, True)
     if call.Status == Skype4Py.clsInProgress:
+        LogMessage('Active call already in progress, speaking now')
         Speak(call, text)
     else:
-        if not hasattr(call, 'OnCallInProgress'):
-            call.OnCallInProgress = {}
-        call.OnCallInProgress['speak'] = text
+        metadata = GetCallMetadata(call)
+        metadata['speakonstart'] = text
         if (not recordAndNotify is False):
-            call.OnCallInProgress['recordAndNotify'] = recordAndNotify
+            metadata['afterStartRecordAndNotify'] = recordAndNotify
     return call
 
 def SendCallMessage(call, message, chat = None):
@@ -253,7 +269,7 @@ def SendCallMessage(call, message, chat = None):
         RecordAudio(call, maxSeconds)
     elif msg[0:15] == '[call-and-play:':
         handle, filename = msg[15:-1].split(',', 1)
-        CallAndPlay(handle, filename, call.PartnerHandle + ',' + chat.Name)
+        CallAndPlay(handle, filename, handle + ',' + chat.Name)
     elif msg[0:11] == '[call-play:':
         LogMessage('playing audio...')
         PlayAudio(call, msg[11:-1])
@@ -262,7 +278,7 @@ def SendCallMessage(call, message, chat = None):
         Speak(call, msg[12:-1])
     elif msg[0:16] == '[call-and-speak:':
         handle, text = msg[16:-1].split(',', 1)
-        CallAndSpeak(handle, text, call.PartnerHandle + ',' + chat.Name)
+        CallAndSpeak(handle, text, handle + ',' + chat.Name)
     else:
         GetChatFromCall(call).SendMessage(message)
 
@@ -319,11 +335,11 @@ while True:
         chat = skype.Chat(room)
         if (messageText.strip() == '[call-start]'):
             call = GetCallFromChat(chat, True)
-        elif (messageText.strip()[0:6] == '[call-'):
+        elif (messageText.strip()[0:6] == '[call-'):            
             call = GetCallFromChat(chat, False)
-            if not call is None:
+            if not call is None or messageText.strip()[0:10] == '[call-and-':
                 SendCallMessage(call, messageText, chat)
-        else:
+        else:            
             chat = skype.Chat(room)
             skype._NextMessageIsFromBot = True
             chat.SendMessage(messageText)
