@@ -18,6 +18,10 @@ audioFolder = 'audio'
 if os.environ.has_key('HUBOT_SKYPE_AUDIO_FOLDER'):
     audioFolder = os.environ['HUBOT_SKYPE_AUDIO_FOLDER']
 
+transport = None
+if os.environ.has_key('HUBOT_SKYPE_TRANSPORT'):
+    transport = os.environ['HUBOT_SKYPE_TRANSPORT']
+
 callMetadata = {}
 
 def Send(msg):
@@ -305,7 +309,7 @@ def Speak(call, text, lang = 'en'):
 if platform.architecture()[0][0:5] != '32bit':
     LogMessage('WARNING: python version is not 32bit this might cause Skype4Py to hang on attaching')
 
-skype = Skype4Py.Skype()
+skype = Skype4Py.Skype(Transport=transport)
 
 # Starting Skype if it's not running already..
 if not skype.Client.IsRunning:
