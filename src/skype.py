@@ -310,7 +310,10 @@ def Speak(call, text, lang = 'en'):
 if platform.architecture()[0][0:5] != '32bit':
     LogMessage('WARNING: python version is not 32bit this might cause Skype4Py to hang on attaching')
 
-skype = Skype4Py.Skype(Transport=transport)
+# fails on windows server
+# skype = Skype4Py.Skype(Transport=transport)
+
+skype = Skype4Py.Skype()
 
 # Starting Skype if it's not running already..
 if not skype.Client.IsRunning:
