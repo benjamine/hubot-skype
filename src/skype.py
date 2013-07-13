@@ -60,6 +60,7 @@ def OnMessageStatus(message, status):
         'message': message_body,
         'room': message.Chat.Name,
     })
+    message.MarkAsSeen()
 
 def LogMessage(message):
     Send({
